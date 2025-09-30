@@ -9,7 +9,7 @@ use std::env;
 
 pub mod routes;
 use crate::routes::general_routes::{handler, handler_404, health_check, uptime};
-use crate::routes::{codeforces, github, utils};
+use crate::routes::{codeforces, github, leetcode, utils};
 use utils::AppState;
 
 fn init_app() -> Router {
@@ -27,6 +27,7 @@ fn init_app() -> Router {
         .route("/github", get(github::github_request))
         .route("/uptime", get(uptime))
         .route("/codeforces", get(codeforces::get_cf_stats))
+        .route("/leetcode", get(leetcode::get_lc_stats))
         .with_state(state);
 
     app.fallback(handler_404)
