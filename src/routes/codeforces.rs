@@ -1,9 +1,5 @@
-use crate::routes::utils::AppState;
-use axum::{Json, extract::State};
-use chrono::{DateTime, Utc};
-use serde_json::Value;
-
-use std::sync::Arc;
+use crate::routes::utils::api_request;
+use axum::Json;
 
 #[derive(serde::Serialize, Clone)]
 pub struct ContestResult {
@@ -26,41 +22,10 @@ pub struct CodeforcesResponse {
     last_contest: ContestResult,
 }
 
-pub async fn codeforces_api_request(
-    client: &reqwest::Client,
-    url: &str,
-    bearer_auth: &str,
-    query_params: Vec<(&str, &str)>,
-) -> Value {
-    let response = client
-        .get(url)
-        .header("User-Agent", "rust-cf-client") // Required by GitHub API
-        .header("Accept", "application/vnd.github.v3+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .query(&query_params)
-        .bearer_auth(bearer_auth)
-        .send();
-    match response.await {
-        Ok(resp) => {
-            if resp.status().is_success() {
-                let json: Value = resp.json().await.unwrap();
-                json
-            } else {
-                println!("GitHub API request failed with status: {}", resp.status());
-                Value::Null
-            }
-        }
-        Err(e) => {
-            println!("Error making request: {}", e);
-            Value::Null
-        }
-    }
-}
-
 pub async fn get_cf_stats() -> Json<CodeforcesResponse> {
     // Placeholder implementation
     let query_params: Vec<(&str, &str)> = vec![("handle", "ruizr274")];
-    let response = codeforces_api_request(
+    let response = api_request(
         &reqwest::Client::new(),
         "https://codeforces.com/api/user.rating",
         "",
