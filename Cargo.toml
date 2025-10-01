@@ -15,3 +15,4 @@ serde = { version = "1", features = ["derive"] } # optional, if parsing JSON
 serde_json = "1.0" # optional, if parsing JSON
 tower_governor = "0.8.0"
 chrono = { version = "0.4", features = ["serde"] }
+pin-project = "1.1.10"
