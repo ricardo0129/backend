@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
+use tower::ServiceBuilder;
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
 use std::env;
@@ -16,11 +17,7 @@ fn init_app() -> Router {
     /*
     Initialize the application state and routes.
     */
-    let state = Arc::new(AppState {
-        client: reqwest::Client::new(),
-        start_time: std::time::Instant::now(),
-        gh_token: env::var("GITHUB_TOKEN").unwrap(),
-    });
+    let state = Arc::new(AppState::new());
     let app = Router::new()
         .route("/", get(handler))
         .route("/health", get(health_check))
@@ -51,9 +48,9 @@ async fn main() {
             governor_limiter.retain_recent();
         }
     });
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::debug!("listening on {}", addr);
-    let app = init_app().layer(GovernorLayer::new(governor_conf));
+    let app = init_app().layer(ServiceBuilder::new().layer(GovernorLayer::new(governor_conf)));
     let listener = TcpListener::bind(addr).await.unwrap();
     axum::serve(
         listener,

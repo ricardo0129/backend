@@ -28,7 +28,7 @@ pub async fn get_cf_stats() -> Json<CodeforcesResponse> {
     let response = api_request(
         &reqwest::Client::new(),
         "https://codeforces.com/api/user.rating",
-        "",
+        "", // No bearer auth needed for Codeforces API
         query_params,
     )
     .await;
@@ -41,10 +41,16 @@ pub async fn get_cf_stats() -> Json<CodeforcesResponse> {
             date_unix: contest["ratingUpdateTimeSeconds"].as_i64().unwrap_or(0),
         });
     }
-    let current_info = UserInfo {
-        rating: contests.last().map_or(0, |c| c.new_rating as i32),
-        date_unix: contests.last().map_or(0, |c| c.date_unix),
-    };
+    let current_info = contests.last().map_or(
+        UserInfo {
+            rating: 0,
+            date_unix: 0,
+        },
+        |c| UserInfo {
+            rating: c.new_rating as i32,
+            date_unix: c.date_unix,
+        },
+    );
     let best_info = contests.iter().max_by_key(|c| c.new_rating).map_or(
         UserInfo {
             rating: 0,

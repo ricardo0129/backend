@@ -7,6 +7,16 @@ pub struct AppState {
     pub gh_token: String,
 }
 
+impl AppState {
+    pub fn new() -> Self {
+        AppState {
+            client: reqwest::Client::new(),
+            start_time: std::time::Instant::now(),
+            gh_token: std::env::var("GITHUB_TOKEN").unwrap_or_default(),
+        }
+    }
+}
+
 pub async fn api_request(
     client: &reqwest::Client,
     url: &str,
