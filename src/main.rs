@@ -108,11 +108,7 @@ fn init_app() -> Router {
     /*
     Initialize the application state and routes.
     */
-    let state = Arc::new(AppState {
-        client: reqwest::Client::new(),
-        start_time: std::time::Instant::now(),
-        gh_token: env::var("GITHUB_TOKEN").unwrap(),
-    });
+    let state = Arc::new(AppState::new());
     let app = Router::new()
         .route("/", get(handler))
         .route("/health", get(health_check))
