@@ -1,18 +1,42 @@
 use serde_json::Value;
+use std::sync::Arc;
+use tokio_postgres::{Client, NoTls};
 
 #[derive(Clone)]
 pub struct AppState {
     pub client: reqwest::Client,
     pub start_time: std::time::Instant,
     pub gh_token: String,
+    pub db_client: Arc<Client>,
+}
+
+pub async fn init_db_client() -> tokio_postgres::Client {
+    let host: String = std::env::var("DB_HOST").expect("DB_HOST must be set");
+    let user: String = std::env::var("DB_USER").expect("DB_USER must be set");
+    let password: String = std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set");
+    let db_url = format!("host={} user={} password={}", host, user, password);
+
+    let (client, connection) = tokio_postgres::connect(&db_url, NoTls).await.unwrap();
+
+    // The connection object performs the actual communication with the database,
+    // so spawn it off to run on its own.
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
+
+    client
 }
 
 impl AppState {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
+        let db_client = init_db_client().await;
         AppState {
             client: reqwest::Client::new(),
             start_time: std::time::Instant::now(),
             gh_token: std::env::var("GITHUB_TOKEN").unwrap_or_default(),
+            db_client: Arc::new(db_client),
         }
     }
 }

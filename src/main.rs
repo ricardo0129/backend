@@ -1,3 +1,4 @@
+use axum::extract::State;
 use axum::response::Json;
 use axum::{Router, routing::get};
 use std::net::SocketAddr;
@@ -19,25 +20,14 @@ struct UserInfo {
     name: String,
 }
 
-pub async fn fetch_user_info() -> Json<Vec<UserInfo>> {
-    // Connect to the database.
-    let host: String = std::env::var("DB_HOST").unwrap_or_default();
-    let user: String = std::env::var("DB_USER").unwrap_or_default();
-    let password: String = std::env::var("DB_PASSWORD").unwrap_or_default();
-    let db_url = format!("host={} user={} password={}", host, user, password);
-
-    let (client, connection) = tokio_postgres::connect(&db_url, NoTls).await.unwrap();
-
-    // The connection object performs the actual communication with the database,
-    // so spawn it off to run on its own.
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-
+//pub async fn github_request(State(state): State<Arc<AppState>>) -> Json<Vec<GithubResponse>> {
+pub async fn fetch_user_info(State(state): State<Arc<AppState>>) -> Json<Vec<UserInfo>> {
     // Now we can execute a simple statement that just returns its parameter.
-    let rows = client.query("SELECT * from userinfo;", &[]).await.unwrap();
+    let rows = state
+        .db_client
+        .query("SELECT * from userinfo;", &[])
+        .await
+        .unwrap();
 
     let mut user_info_list = Vec::new();
     for row in rows {
@@ -49,11 +39,11 @@ pub async fn fetch_user_info() -> Json<Vec<UserInfo>> {
     Json(user_info_list)
 }
 
-fn init_app() -> Router {
+async fn init_app() -> Router {
     /*
     Initialize the application state and routes.
     */
-    let state = Arc::new(AppState::new());
+    let state = Arc::new(AppState::new().await);
     let app = Router::new()
         .route("/", get(handler))
         .route("/health", get(health_check))
@@ -87,7 +77,9 @@ async fn main() {
     });
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::debug!("listening on {}", addr);
-    let app = init_app().layer(ServiceBuilder::new().layer(GovernorLayer::new(governor_conf)));
+    let app = init_app()
+        .await
+        .layer(ServiceBuilder::new().layer(GovernorLayer::new(governor_conf)));
     let listener = TcpListener::bind(addr).await.unwrap();
     axum::serve(
         listener,
