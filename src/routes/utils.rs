@@ -25,7 +25,6 @@ pub async fn init_db_client() -> tokio_postgres::Client {
             eprintln!("connection error: {}", e);
         }
     });
-
     client
 }
 
