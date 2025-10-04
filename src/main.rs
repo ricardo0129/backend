@@ -1,3 +1,4 @@
+use axum::response::Json;
 use axum::{Router, routing::get};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -6,12 +7,71 @@ use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
-use std::env;
-
 pub mod routes;
 use crate::routes::general_routes::{handler, handler_404, health_check, uptime};
 use crate::routes::{codeforces, github, leetcode, utils};
+use tokio_postgres::{Error, NoTls};
 use utils::AppState;
+
+async fn test_db() {
+    // Connect to the database.
+    let (client, connection) =
+        tokio_postgres::connect("host=localhost user=postgres password=password", NoTls)
+            .await
+            .unwrap();
+
+    // The connection object performs the actual communication with the database,
+    // so spawn it off to run on its own.
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
+
+    // Now we can execute a simple statement that just returns its parameter.
+    let rows = client.query("SELECT * from userinfo;", &[]).await.unwrap();
+
+    for row in rows {
+        let id: &str = row.get(0);
+        let name: &str = row.get(1);
+
+        println!("found person: {} {}", id, name);
+    }
+}
+
+#[derive(serde::Serialize)]
+struct UserInfo {
+    id: String,
+    name: String,
+}
+
+pub async fn fetch_user_info() -> Json<Vec<UserInfo>> {
+    // Connect to the database.
+    let (client, connection) =
+        tokio_postgres::connect("host=localhost user=postgres password=password", NoTls)
+            .await
+            .unwrap();
+
+    // The connection object performs the actual communication with the database,
+    // so spawn it off to run on its own.
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
+
+    // Now we can execute a simple statement that just returns its parameter.
+    let rows = client.query("SELECT * from userinfo;", &[]).await.unwrap();
+
+    let mut user_info_list = Vec::new();
+    for row in rows {
+        let id: String = row.get(0);
+        let name: String = row.get(1);
+        user_info_list.push(UserInfo { id, name });
+    }
+
+    Json(user_info_list)
+}
 
 fn init_app() -> Router {
     /*
@@ -25,6 +85,7 @@ fn init_app() -> Router {
         .route("/uptime", get(uptime))
         .route("/codeforces", get(codeforces::get_cf_stats))
         .route("/leetcode", get(leetcode::get_lc_stats))
+        .route("/userinfo", get(fetch_user_info))
         .with_state(state);
 
     app.fallback(handler_404)
@@ -32,6 +93,7 @@ fn init_app() -> Router {
 
 #[tokio::main]
 async fn main() {
+    test_db().await;
     let governor_conf = Arc::new(
         GovernorConfigBuilder::default()
             .per_second(1)

@@ -1,4 +1,4 @@
-CREATE TABLE USER {
+CREATE TABLE UserInfo (
     id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(100)
-};
+);
