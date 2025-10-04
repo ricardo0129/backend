@@ -13,32 +13,6 @@ use crate::routes::{codeforces, github, leetcode, utils};
 use tokio_postgres::{Error, NoTls};
 use utils::AppState;
 
-async fn test_db() {
-    // Connect to the database.
-    let (client, connection) =
-        tokio_postgres::connect("host=localhost user=postgres password=password", NoTls)
-            .await
-            .unwrap();
-
-    // The connection object performs the actual communication with the database,
-    // so spawn it off to run on its own.
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-
-    // Now we can execute a simple statement that just returns its parameter.
-    let rows = client.query("SELECT * from userinfo;", &[]).await.unwrap();
-
-    for row in rows {
-        let id: &str = row.get(0);
-        let name: &str = row.get(1);
-
-        println!("found person: {} {}", id, name);
-    }
-}
-
 #[derive(serde::Serialize)]
 struct UserInfo {
     id: String,
@@ -47,10 +21,12 @@ struct UserInfo {
 
 pub async fn fetch_user_info() -> Json<Vec<UserInfo>> {
     // Connect to the database.
-    let (client, connection) =
-        tokio_postgres::connect("host=localhost user=postgres password=password", NoTls)
-            .await
-            .unwrap();
+    let host: String = std::env::var("DB_HOST").unwrap_or_default();
+    let user: String = std::env::var("DB_USER").unwrap_or_default();
+    let password: String = std::env::var("DB_PASSWORD").unwrap_or_default();
+    let db_url = format!("host={} user={} password={}", host, user, password);
+
+    let (client, connection) = tokio_postgres::connect(&db_url, NoTls).await.unwrap();
 
     // The connection object performs the actual communication with the database,
     // so spawn it off to run on its own.
@@ -93,7 +69,6 @@ fn init_app() -> Router {
 
 #[tokio::main]
 async fn main() {
-    test_db().await;
     let governor_conf = Arc::new(
         GovernorConfigBuilder::default()
             .per_second(1)
