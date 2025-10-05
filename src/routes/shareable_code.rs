@@ -56,3 +56,13 @@ pub async fn get_solution(
         language: Language::Python,
     })
 }
+
+pub async fn contribute_solution(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<Solution>,
+) -> impl IntoResponse {
+    println!("Received contribution from {}:", addr);
+    // Here you would typically insert the solution into the database
+    (StatusCode::OK, "Solution contributed successfully")
+}

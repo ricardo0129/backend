@@ -60,6 +60,10 @@ async fn init_app() -> Router {
             "/shareable_code/solution/{prob_id}",
             get(shareable_code::get_solution),
         )
+        .route(
+            "/shareable_code/contribute",
+            axum::routing::post(shareable_code::contribute_solution),
+        )
         .with_state(state);
 
     app.fallback(handler_404)
