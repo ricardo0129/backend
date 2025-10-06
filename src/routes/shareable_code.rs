@@ -14,18 +14,18 @@ pub struct Problem {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-enum Language {
-    Python,
-    JavaScript,
-    Cpp,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Solution {
     id: i64,
     problem_id: i64,
     solution: String,
-    language: Language,
+    language: String,
+}
+
+#[derive(serde::Deserialize)]
+pub struct ContributePayload {
+    problem_id: i32,
+    addition: String,
+    language: String,
 }
 
 pub async fn get_problems(State(state): State<Arc<AppState>>) -> Json<Vec<Problem>> {
@@ -53,16 +53,24 @@ pub async fn get_solution(
         id: 1,
         problem_id: prob_id as i64,
         solution: "print('Hello, World!')".to_string(),
-        language: Language::Python,
+        language: "Python".to_string(),
     })
 }
 
 pub async fn contribute_solution(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<Solution>,
+    Json(payload): Json<ContributePayload>,
 ) -> impl IntoResponse {
-    println!("Received contribution from {}:", addr);
-    // Here you would typically insert the solution into the database
-    (StatusCode::OK, "Solution contributed successfully")
+    let q = "UPDATE solution SET code = code || $1 where id = $2 and language = $3";
+    state
+        .db_client
+        .execute(
+            q,
+            &[&payload.addition, &payload.problem_id, &payload.language],
+        )
+        .await
+        .unwrap();
+
+    StatusCode::OK
 }
