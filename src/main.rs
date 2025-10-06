@@ -10,7 +10,7 @@ use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 
 pub mod routes;
 use crate::routes::general_routes::{handler, handler_404, health_check, uptime};
-use crate::routes::{codeforces, github, leetcode, utils};
+use crate::routes::{codeforces, github, leetcode, shareable_code, utils};
 use tokio_postgres::{Error, NoTls};
 use utils::AppState;
 
@@ -52,6 +52,18 @@ async fn init_app() -> Router {
         .route("/codeforces", get(codeforces::get_cf_stats))
         .route("/leetcode", get(leetcode::get_lc_stats))
         .route("/userinfo", get(fetch_user_info))
+        .route(
+            "/shareable_code/problems",
+            get(shareable_code::get_problems),
+        )
+        .route(
+            "/shareable_code/solution/{prob_id}",
+            get(shareable_code::get_solution),
+        )
+        .route(
+            "/shareable_code/contribute",
+            axum::routing::post(shareable_code::contribute_solution),
+        )
         .with_state(state);
 
     app.fallback(handler_404)
